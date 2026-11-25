@@ -1,0 +1,64 @@
+---
+// Renders <pre class="mermaid"> blocks in the browser. The build only emits the
+// diagram source (rehype-mermaid "pre-mermaid" strategy), so no headless browser
+// is needed at build time. Mermaid loads only on pages that contain a diagram.
+---
+
+<style is:global>
+  pre.mermaid {
+    border: 0;
+    background: transparent;
+    text-align: center;
+    white-space: pre;
+  }
+
+  pre.mermaid:not([data-rendered]) {
+    color: transparent;
+  }
+
+  pre.mermaid svg {
+    display: inline-block;
+    max-width: 100%;
+    height: auto;
+  }
+</style>
+
+<script>
+  let observer: MutationObserver | undefined;
+
+  async function renderMermaid() {
+    const blocks = Array.from(document.querySelectorAll<HTMLElement>("pre.mermaid"));
+    if (blocks.length === 0) return;
+
+    const { default: mermaid } = await import("mermaid");
+    const dark = document.documentElement.classList.contains("dark");
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: "strict",
+      theme: dark ? "dark" : "default",
+    });
+
+    for (const [i, block] of blocks.entries()) {
+      // Keep the original source so diagrams can be redrawn after a theme change
+      if (!block.dataset.source) block.dataset.source = block.textContent ?? "";
+      const { svg } = await mermaid.render(`mermaid-${Date.now()}-${i}`, block.dataset.source);
+      block.innerHTML = svg;
+      block.dataset.rendered = "true";
+    }
+
+    // Redraw when the site theme switches between light and dark
+    observer?.disconnect();
+    let lastDark = dark;
+    observer = new MutationObserver(() => {
+      const nowDark = document.documentElement.classList.contains("dark");
+      if (nowDark !== lastDark) {
+        lastDark = nowDark;
+        renderMermaid();
+      }
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+  }
+
+  // Fires on the first load and after every client-side navigation
+  document.addEventListener("astro:page-load", renderMermaid);
+</script>

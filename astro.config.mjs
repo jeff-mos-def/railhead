@@ -23,7 +23,7 @@ export default defineConfig({
       theme: "css-variables",
     },
     processor: unified(),
-    rehypePlugins: [[rehypeMermaid, { strategy: "img-svg", dark: true }]],
+    rehypePlugins: [[rehypeMermaid, { strategy: "pre-mermaid" }]],
   },
   vite: {
     plugins: [tailwindcss()],

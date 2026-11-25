@@ -187,7 +187,8 @@ const { title, description, image = "/img/JDC-blogpost.jpg" } = Astro.props;
 
   function addCopyCodeButtons() {
     let copyButtonLabel = "Copy";
-    let codeBlocks = Array.from(document.querySelectorAll("pre"));
+    // Mermaid diagram blocks are not code, so they get no copy button
+    let codeBlocks = Array.from(document.querySelectorAll("pre:not(.mermaid)"));
 
     async function copyCode(codeBlock, copyButton) {
       const codeText = codeBlock.innerText;
