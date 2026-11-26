@@ -40,6 +40,11 @@
       document.addEventListener('astro:page-load', () => {
         this.setupImages();
       });
+
+      // Mermaid diagrams are drawn after the page loads, so pick them up then
+      document.addEventListener('mermaid:rendered', () => {
+        this.setupImages();
+      });
     }
 
     private setupImages(): void {

@@ -16,15 +16,40 @@
     color: transparent;
   }
 
-  pre.mermaid svg {
+  pre.mermaid img.mermaid-diagram {
     display: inline-block;
     max-width: 100%;
     height: auto;
+    margin: 0;
   }
 </style>
 
 <script>
   let observer: MutationObserver | undefined;
+
+  // Diagrams go into the page as <img> elements, the same way the old
+  // build-time rendering delivered them, so the lightbox can open them.
+  function svgToImage(svgMarkup: string): HTMLImageElement {
+    const holder = document.createElement("div");
+    holder.innerHTML = svgMarkup;
+    const svg = holder.querySelector("svg");
+    const img = document.createElement("img");
+    img.alt = "Diagram";
+    img.className = "mermaid-diagram";
+    if (!svg) return img;
+
+    // Give the image a real size from the viewBox instead of Mermaid's 100% width
+    const viewBox = svg.getAttribute("viewBox")?.split(/[\s,]+/).map(Number);
+    if (viewBox && viewBox.length === 4) {
+      svg.setAttribute("width", String(viewBox[2]));
+      svg.setAttribute("height", String(viewBox[3]));
+    }
+    svg.removeAttribute("style");
+
+    const xml = new XMLSerializer().serializeToString(svg);
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(xml);
+    return img;
+  }
 
   async function renderMermaid() {
     const blocks = Array.from(document.querySelectorAll<HTMLElement>("pre.mermaid"));
@@ -42,9 +67,12 @@
       // Keep the original source so diagrams can be redrawn after a theme change
       if (!block.dataset.source) block.dataset.source = block.textContent ?? "";
       const { svg } = await mermaid.render(`mermaid-${Date.now()}-${i}`, block.dataset.source);
-      block.innerHTML = svg;
+      block.replaceChildren(svgToImage(svg));
       block.dataset.rendered = "true";
     }
+
+    // Tell the lightbox to pick up the new diagram images
+    document.dispatchEvent(new CustomEvent("mermaid:rendered"));
 
     // Redraw when the site theme switches between light and dark
     observer?.disconnect();
