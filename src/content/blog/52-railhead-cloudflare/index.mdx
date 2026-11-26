@@ -1,0 +1,89 @@
+---
+title: "Railhead: A New Look and a New Home on Cloudflare"
+description: "The site has its own name, a new design, ten topics, and now runs on Cloudflare."
+date: "2026-11-25"
+tags: ["site-updates"]
+draft: false
+---
+
+This site started as a fork of astro-micro, built and hosted on Netlify. As of today it has its own name, Railhead, its own repository, and it runs on Cloudflare. Here is where it came from and where it is now.
+
+---
+
+## Where it came from
+
+- **Code:** a GitHub fork of trevortylerlee/astro-micro, in the jeffcamacho-micro repository.
+- **Hosting:** Netlify built and served the site. The domain's DNS already lived on Cloudflare, with two CNAME records pointing jeffcamacho.com and www at Netlify.
+- **Type:** Geist Sans everywhere, in a single narrow column.
+- **Tags:** 123 distinct tags across 52 posts, and 6 posts with no tags at all.
+- **Diagrams:** Mermaid diagrams were drawn at build time by a headless Chromium browser, through rehype-mermaid.
+
+---
+
+## Moving to Cloudflare
+
+I renamed the project Railhead and moved it to a new repository, jeff-mos-def/railhead. The same name runs through the whole build: the `package.json` name, the Cloudflare Worker, and its workers.dev address.
+
+The site deploys as a Cloudflare Worker that serves the built files as static assets. There's no server code. The whole deployment config is one small file:
+
+```jsonc
+{
+  "name": "railhead",
+  "compatibility_date": "2026-11-25",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "404-page"
+  }
+}
+```
+
+Cloudflare runs `npm run build` and then `npx wrangler deploy` on every push to main.
+
+**Diagrams moved to the browser.** Cloudflare's build environment doesn't include the system libraries that headless Chromium needs, starting with `libatk-1.0.so.0`, so the old build-time rendering can't run there. rehype-mermaid now uses its `pre-mermaid` strategy. The build writes out the diagram source, and Mermaid draws it in the reader's browser. The Mermaid script only loads on pages that have a diagram, and the build no longer needs a browser at all.
+
+**The domain.** jeffcamacho.com and www.jeffcamacho.com are connected to the Worker as custom domains, replacing the two Netlify CNAMEs.
+
+**Comments.** Giscus now writes to the Discussions in the railhead repository. Comment threads from the old site stay in jeffcamacho-micro's Discussions.
+
+---
+
+## The new look
+
+- **Type:** Archivo for headings and the interface, set wide and heavy for page titles. Source Serif 4 for reading text in posts and projects. Geist Mono for code.
+- **Color:** slate paper, navy ink, and one cobalt accent, in both light and dark themes.
+- **Home page:** opens with the name, the intro, and a career line. That's a transit-style line with one stop for each role in the Work collection, each linking to its entry on the Work page. Below it come the latest writing with a topic list, recent projects, credentials pulled from the Education entries, and contact links.
+- **Work page:** a vertical timeline in the same style as the career line.
+- **Sidebars:** the blog, post and project sidebars now appear from 1200 pixels wide, down from 1340.
+
+---
+
+## Ten topics
+
+Every post was retagged by what it's actually about. The 123 tags collapsed into ten topics:
+
+- Project Management
+- Agile & SAFe
+- Product & Discovery
+- Systems & Process
+- Career & Leadership
+- PMP Journey
+- Builds & Gear
+- Site Updates
+- Veterans & Community
+- Personal
+
+The list lives in `src/lib/tags.ts`, with a label and a one-line description for each topic. The content schema only accepts those ten slugs, so a typo or a one-off tag fails the build instead of quietly creating another tag page.
+
+The blog's topic filter from the navigation rebuild now lists all ten in a fixed order, replacing the most-used-first top-ten list. Each topic has its own page, and `/tags` lists all of them with a description and recent posts. The old tag addresses are gone.
+
+---
+
+## Smaller fixes
+
+- **Related posts on projects:** posts linked to a project now show under that project. The posts store the link as `/projects/pmp`, but the projects page compared it against `pmp`, so it never matched.
+- **Search:** Pagefind now indexes only posts and projects, so the blog list and tag pages no longer show up as results. The header shows a `/` key hint for opening search.
+- **Expired certifications:** an `expired: true` line in a certification's front matter keeps it off the home page and labels it Expired on the Education page.
+- **RSS:** the footer links to the feed.
+- **README:** rewritten for Railhead.
+
+- Jeff
