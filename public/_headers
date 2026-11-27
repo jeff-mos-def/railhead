@@ -1,0 +1,10 @@
+# Astro's build files have a content hash in their names, so they can be cached for a year
+/_astro/*
+  Cache-Control: public, max-age=31556952, immutable
+
+# Basic security headers for every page
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
