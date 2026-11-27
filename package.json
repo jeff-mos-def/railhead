@@ -23,7 +23,6 @@
     "@portaljs/remark-wiki-link": "^1.2.0",
     "@tailwindcss/vite": "^4.3.0",
     "astro": "^7.4.8",
-    "astro-sitemap": "^1.0.0",
     "chart.js": "^4.5.0",
     "clsx": "^2.1.1",
     "fast-glob": "^3.3.3",
