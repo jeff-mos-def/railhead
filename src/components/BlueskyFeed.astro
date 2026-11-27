@@ -1,0 +1,246 @@
+---
+/**
+ * Latest Bluesky posts, loaded in the visitor's browser from Bluesky's public API.
+ * No login or API key. If Bluesky can't be reached, the section shows a link instead.
+ */
+type Props = { handle: string; count?: number };
+const { handle, count = 3 } = Astro.props;
+const profileUrl = `https://bsky.app/profile/${handle}`;
+---
+
+<section class="animate border-t border-line py-16" data-bsky data-handle={handle} data-count={count}>
+  <div class="mb-8 flex items-baseline justify-between gap-4">
+    <h2 class="section-title text-2xl">On Bluesky</h2>
+    <a href={profileUrl} class="link text-sm">Follow @{handle}</a>
+  </div>
+
+  <ul class="bsky-list grid gap-x-10 gap-y-8 md:grid-cols-3" aria-live="polite">
+    {Array.from({ length: count }).map(() => <li class="bsky-skeleton" aria-hidden="true" />)}
+  </ul>
+
+  <p class="bsky-fallback hidden text-[0.95rem] text-text">
+    Recent posts couldn't load. <a href={profileUrl} class="link">See them on Bluesky</a>.
+  </p>
+</section>
+
+<style is:global>
+  .bsky-skeleton {
+    height: 9rem;
+    border-left: 2px solid var(--c-line);
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--c-line) 35%, transparent), transparent);
+  }
+
+  .bsky-post {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-left: 1.1rem;
+    border-left: 2px solid var(--c-line);
+    transition: border-color 150ms ease;
+  }
+
+  .bsky-post:hover {
+    border-left-color: var(--c-accent);
+  }
+
+  .bsky-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .bsky-main:hover .bsky-text {
+    color: var(--c-accent-ink);
+  }
+
+  .bsky-text {
+    font-family: var(--font-serif);
+    font-size: 1.05rem;
+    line-height: 1.55;
+    color: var(--c-ink);
+    white-space: pre-line;
+    transition: color 150ms ease;
+    overflow-wrap: anywhere;
+  }
+
+  .bsky-photo {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 3;
+    max-height: 20rem;
+    object-fit: cover;
+    border: 1px solid var(--c-line);
+    border-radius: 0.5rem;
+    background: color-mix(in srgb, var(--c-line) 35%, transparent);
+  }
+
+  .bsky-preview {
+    display: block;
+    overflow: hidden;
+    border: 1px solid var(--c-line);
+    border-radius: 0.5rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--c-text);
+    transition: border-color 150ms ease, color 150ms ease;
+  }
+
+  .bsky-preview-thumb {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1.91 / 1;
+    object-fit: cover;
+    border-bottom: 1px solid var(--c-line);
+    background: color-mix(in srgb, var(--c-line) 35%, transparent);
+  }
+
+  .bsky-preview-title {
+    display: block;
+    padding: 0.55rem 0.75rem;
+  }
+
+  a.bsky-preview:hover {
+    border-color: var(--c-accent);
+    color: var(--c-ink);
+  }
+
+  .bsky-stats {
+    display: flex;
+    gap: 1rem;
+    margin-top: auto;
+  }
+</style>
+
+<script>
+  type FeedItem = {
+    post: {
+      uri: string;
+      record: { text: string; createdAt: string };
+      replyCount?: number;
+      repostCount?: number;
+      likeCount?: number;
+      embed?: {
+        $type: string;
+        external?: { uri?: string; title?: string; thumb?: string };
+        images?: { thumb: string; alt: string; aspectRatio?: { width: number; height: number } }[];
+      };
+    };
+    reason?: unknown;
+  };
+
+  const cache = new Map<string, FeedItem[]>();
+
+  function el(tag: string, className: string, text?: string) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  function externalLink(href: string, className: string) {
+    const a = el("a", className) as HTMLAnchorElement;
+    a.href = href;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    return a;
+  }
+
+  function renderPost(item: FeedItem, handle: string) {
+    const { post } = item;
+    const rkey = post.uri.split("/").pop();
+    const li = document.createElement("li");
+    const card = el("div", "bsky-post");
+
+    // Date and text open the post on Bluesky
+    const main = externalLink(`https://bsky.app/profile/${handle}/post/${rkey}`, "bsky-main");
+    const date = new Date(post.record.createdAt);
+    const time = el("time", "meta text-xs", date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }));
+    time.setAttribute("datetime", post.record.createdAt);
+    main.append(time, el("p", "bsky-text", post.record.text));
+    card.append(main);
+
+    // First photo, if any, as a lazy-loaded thumbnail inside the post link
+    const embed = post.embed;
+    const photos = embed?.$type?.startsWith("app.bsky.embed.images") ? embed.images ?? [] : [];
+    const first = photos[0];
+    if (first?.thumb?.startsWith("https://")) {
+      const img = document.createElement("img");
+      img.className = "bsky-photo";
+      img.src = first.thumb;
+      img.alt = first.alt ?? "";
+      img.loading = "lazy";
+      img.decoding = "async";
+      if (first.aspectRatio?.width && first.aspectRatio?.height) {
+        img.width = first.aspectRatio.width;
+        img.height = first.aspectRatio.height;
+        img.style.aspectRatio = `${first.aspectRatio.width} / ${first.aspectRatio.height}`;
+      }
+      // A photo that fails to load hides itself
+      img.addEventListener("error", () => img.remove(), { once: true });
+      main.append(img);
+      if (photos.length > 1) main.append(el("span", "meta text-xs", `+${photos.length - 1} more`));
+    }
+
+    // A shared article's title box opens the article itself
+    const external = embed?.$type?.startsWith("app.bsky.embed.external") ? embed.external : undefined;
+    if (external?.title && external.uri?.startsWith("http")) {
+      const preview = externalLink(external.uri, "bsky-preview");
+      // The linked page's preview image, if the site provides one
+      if (external.thumb?.startsWith("https://")) {
+        const thumb = document.createElement("img");
+        thumb.className = "bsky-preview-thumb";
+        thumb.src = external.thumb;
+        thumb.alt = "";
+        thumb.loading = "lazy";
+        thumb.decoding = "async";
+        thumb.addEventListener("error", () => thumb.remove(), { once: true });
+        preview.append(thumb);
+      }
+      preview.append(el("span", "bsky-preview-title", external.title));
+      card.append(preview);
+    }
+
+    // Only show counts above zero
+    const counts: [number, string, string][] = [
+      [post.likeCount ?? 0, "like", "likes"],
+      [post.replyCount ?? 0, "reply", "replies"],
+      [post.repostCount ?? 0, "repost", "reposts"],
+    ];
+    const stats = el("span", "bsky-stats meta text-xs");
+    for (const [n, one, many] of counts) if (n > 0) stats.append(el("span", "", `${n} ${n === 1 ? one : many}`));
+    if (stats.childElementCount) card.append(stats);
+
+    li.append(card);
+    return li;
+  }
+
+  async function loadBluesky() {
+    const section = document.querySelector<HTMLElement>("[data-bsky]");
+    if (!section) return;
+    const handle = section.dataset.handle!;
+    const count = Number(section.dataset.count ?? 3);
+    const list = section.querySelector(".bsky-list")!;
+    const fallback = section.querySelector(".bsky-fallback")!;
+
+    try {
+      let items = cache.get(handle);
+      if (!items) {
+        const url = `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(handle)}&filter=posts_no_replies&limit=20`;
+        const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+        if (!res.ok) throw new Error(`Bluesky returned ${res.status}`);
+        const data = (await res.json()) as { feed: FeedItem[] };
+        items = data.feed.filter((item) => !item.reason).slice(0, count);
+        cache.set(handle, items);
+      }
+      if (!items.length) throw new Error("No posts");
+      list.replaceChildren(...items.map((item) => renderPost(item, handle)));
+    } catch {
+      list.remove();
+      fallback.classList.remove("hidden");
+    }
+  }
+
+  document.addEventListener("astro:page-load", loadBluesky);
+</script>

@@ -4,6 +4,7 @@ import Container from "@components/Container.astro";
 import CareerLine from "@components/CareerLine.astro";
 import PostRow from "@components/PostRow.astro";
 import StatusBadge from "@components/StatusBadge.astro";
+import BlueskyFeed from "@components/BlueskyFeed.astro";
 import { SITE, HOME, SOCIALS } from "@consts";
 import { TAGS } from "@lib/tags";
 import { getCollection } from "astro:content";
@@ -114,6 +115,11 @@ const linkedin = SOCIALS.find((s) => s.NAME === "LinkedIn");
           </aside>
         </div>
       </section>
+    </Container>
+
+    <!-- Bluesky -->
+    <Container size="wide">
+      <BlueskyFeed handle="jeffcamacho.com" />
     </Container>
 
     <!-- Projects -->
