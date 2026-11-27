@@ -147,7 +147,16 @@ const profileUrl = `https://bsky.app/profile/${handle}`;
     return a;
   }
 
-  function renderPost(item: FeedItem, handle: string) {
+  function plural(n: number, word: string) {
+    return `${n} ${word}${n === 1 ? "" : "s"}`;
+  }
+
+  /** Images only on screens wide enough for the three-column layout (Tailwind's md breakpoint), so phones never download them. */
+  function wideScreen() {
+    return window.matchMedia("(min-width: 48rem)").matches;
+  }
+
+  function renderPost(item: FeedItem, handle: string, showImages: boolean) {
     const { post } = item;
     const rkey = post.uri.split("/").pop();
     const li = document.createElement("li");
@@ -165,7 +174,9 @@ const profileUrl = `https://bsky.app/profile/${handle}`;
     const embed = post.embed;
     const photos = embed?.$type?.startsWith("app.bsky.embed.images") ? embed.images ?? [] : [];
     const first = photos[0];
-    if (first?.thumb?.startsWith("https://")) {
+    if (!showImages && photos.length) {
+      main.append(el("span", "meta text-xs", plural(photos.length, "photo")));
+    } else if (first?.thumb?.startsWith("https://")) {
       const img = document.createElement("img");
       img.className = "bsky-photo";
       img.src = first.thumb;
@@ -188,7 +199,7 @@ const profileUrl = `https://bsky.app/profile/${handle}`;
     if (external?.title && external.uri?.startsWith("http")) {
       const preview = externalLink(external.uri, "bsky-preview");
       // The linked page's preview image, if the site provides one
-      if (external.thumb?.startsWith("https://")) {
+      if (showImages && external.thumb?.startsWith("https://")) {
         const thumb = document.createElement("img");
         thumb.className = "bsky-preview-thumb";
         thumb.src = external.thumb;
@@ -235,7 +246,8 @@ const profileUrl = `https://bsky.app/profile/${handle}`;
         cache.set(handle, items);
       }
       if (!items.length) throw new Error("No posts");
-      list.replaceChildren(...items.map((item) => renderPost(item, handle)));
+      const showImages = wideScreen();
+      list.replaceChildren(...items.map((item) => renderPost(item, handle, showImages)));
     } catch {
       list.remove();
       fallback.classList.remove("hidden");
