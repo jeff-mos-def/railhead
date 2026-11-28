@@ -11,7 +11,7 @@ const profileUrl = `https://bsky.app/profile/${handle}`;
 <section class="animate border-t border-line py-16" data-bsky data-handle={handle} data-count={count}>
   <div class="mb-8 flex items-baseline justify-between gap-4">
     <h2 class="section-title text-2xl">On Bluesky</h2>
-    <a href={profileUrl} class="link text-sm">Follow @{handle}</a>
+    <a href={profileUrl} class="link text-sm" target="_blank" rel="noopener noreferrer">Follow @{handle}</a>
   </div>
 
   <ul class="bsky-list grid gap-x-10 gap-y-8 md:grid-cols-3" aria-live="polite">
